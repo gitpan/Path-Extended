@@ -1,0 +1,27 @@
+Changes
+lib/Path/Extended.pm
+lib/Path/Extended/Dir.pm
+lib/Path/Extended/Entity.pm
+lib/Path/Extended/File.pm
+Makefile.PL
+MANIFEST			This list of files
+README
+t/00_load.t
+t/10_entity.t
+t/20_file.t
+t/30_directory.t
+t/99_pod.t
+t/99_podcoverage.t
+t/lib/Path/Extended/Test/Dir/Copy.pm
+t/lib/Path/Extended/Test/Dir/Exists.pm
+t/lib/Path/Extended/Test/Dir/Find.pm
+t/lib/Path/Extended/Test/Dir/Mkdir.pm
+t/lib/Path/Extended/Test/Dir/Path.pm
+t/lib/Path/Extended/Test/Dir/Seek.pm
+t/lib/Path/Extended/Test/Entity/Log.pm
+t/lib/Path/Extended/Test/File/Copy.pm
+t/lib/Path/Extended/Test/File/Path.pm
+t/lib/Path/Extended/Test/File/Read.pm
+t/lib/Path/Extended/Test/File/Slurp.pm
+t/lib/Path/Extended/Test/File/Stat.pm
+META.yml                                 Module meta-data (added by MakeMaker)
