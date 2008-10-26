@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Path-Extended
-version:            0.01
+version:            0.02
 abstract:           yet another Path class
 author:
     - Kenichi Ishigaki <ishigaki@cpan.org>
@@ -20,7 +20,7 @@ requires:
     File::Path:           0
     File::Spec:           0
     File::stat:           0
-    IO::Handle:           0
+    IO:                   1.23
     Scalar::Util:         0
     Test::Classy:         0.04
     Test::More:           0.47

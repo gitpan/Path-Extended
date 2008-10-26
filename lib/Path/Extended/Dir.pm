@@ -114,7 +114,7 @@ sub _find {
     @items = $options{callback}->( @items );
   }
 
-  return map { $package->new($_) } @items;
+  return grep { defined } map { $package->new($_) } @items;
 }
 
 sub rmdir {

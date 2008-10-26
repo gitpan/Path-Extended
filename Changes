@@ -1,4 +1,10 @@
 Revision history for Path-Extended
 
+0.02 2008/10/26
+  - requires IO 1.27 to support "say"
+  - dir->seek isn't always zero
+  - loosened dir->find(_dir) tests which look like
+    a bit too strict
+
 0.01 2008/10/23
   - initial release

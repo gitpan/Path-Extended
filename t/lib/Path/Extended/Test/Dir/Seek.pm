@@ -16,7 +16,8 @@ sub seek : Tests(11) {
   my $file2 = file('t/tmp/seek/file2.txt')->save('content2');
 
   ok $dir->open, $class->message('opened directory');
-  ok !$dir->tell, $class->message('current position is zero');
+
+  ok defined $dir->tell, $class->message('current position is '. $dir->tell);
 
   ok $dir->read, $class->message('read directory');
 
@@ -32,7 +33,7 @@ sub seek : Tests(11) {
 
   ok $dir->rewind, $class->message('rewinded');
 
-  ok !$dir->tell, $class->message('current position is zero');
+  ok defined $dir->tell, $class->message('current position is '. $dir->tell);
 
   ok $dir->close, $class->message('closed directory');
 

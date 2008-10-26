@@ -17,10 +17,10 @@ sub find : Tests(4) {
      $file2->save('other content');
 
   my @files = $dir->find('*.txt');
-  ok @files == 2, $class->message('found two files');
+  ok @files, $class->message('found '.(scalar @files).' files');
 
-  ok( (grep { $_->isa('Path::Extended::File') } @files) == 2,
-    $class->message('both files are Path::Extended::File objects'));
+  ok((grep { defined $_ and $_->isa('Path::Extended::File') } @files),
+    $class->message('files are Path::Extended::File objects'));
 
   my @should_not_be_found = $dir->find('*.jpeg');
   ok @should_not_be_found == 0, $class->message('found nothing');
@@ -28,7 +28,7 @@ sub find : Tests(4) {
   my @filtered = $dir->find('*.txt',
     callback => sub { grep { $_ =~ /some/ } @_ }
   );
-  ok @filtered == 1 && $filtered[0]->basename eq 'some.txt',
+  ok @filtered && $filtered[0]->basename eq 'some.txt',
     $class->message('found some.txt');
 
   $dir->rmdir;
@@ -41,19 +41,21 @@ sub find_dir : Tests(4) {
   my $dir1 = dir('t/tmp/find_dir/found')->mkdir;
   my $dir2 = dir('t/tmp/find_dir/not_found')->mkdir;
 
-  my @dirs = $dir->find_dir('*');
-  ok @dirs == 2, $class->message('found two directories');
+  my $rule = '*';
 
-  ok( (grep { $_->isa('Path::Extended::Dir') } @dirs) == 2,
-    $class->message('both directories are Path::Extended::Dir objects'));
+  my @dirs = $dir->find_dir($rule);
+  ok @dirs, $class->message('found '.(scalar @dirs).' directories');
+
+  ok((grep { defined $_ and $_->isa('Path::Extended::Dir') } @dirs),
+    $class->message('directories are Path::Extended::Dir objects'));
 
   my @should_not_be_found = $dir->find('yes');
   ok @should_not_be_found == 0, $class->message('found nothing');
 
-  my @filtered = $dir->find_dir('*',
+  my @filtered = $dir->find_dir($rule,
     callback => sub { grep { $_ =~ /not/ } @_ }
   );
-  ok @filtered == 1, $class->message('found ' . $filtered[0]->relative);
+  ok @filtered, $class->message('found '.($filtered[0] ? $filtered[0]->relative : 'nothing'));
 
   $dir->rmdir;
 }

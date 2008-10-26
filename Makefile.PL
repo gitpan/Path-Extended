@@ -20,7 +20,7 @@ WriteMakefile(
     'File::Path'            => 0,
     'File::Spec'            => 0,
     'File::stat'            => 0,
-    'IO::Handle'            => 0,
+    'IO'                    => 1.23,
     'Scalar::Util'          => 0,
     'Test::Classy'          => '0.04',
     'Test::More'            => '0.47',
