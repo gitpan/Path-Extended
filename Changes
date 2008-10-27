@@ -1,5 +1,10 @@
 Revision history for Path-Extended
 
+0.02 2008/10/27
+  - now Path::Extended::Dir ignores only dot files/directories
+    under the target directory while looking for something.
+    (i.e. don't care if they are under .cpan directory)
+
 0.02 2008/10/26
   - requires IO 1.27 to support "say"
   - dir->seek isn't always zero

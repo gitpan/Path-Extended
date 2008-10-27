@@ -106,15 +106,15 @@ sub _find {
   require File::Find::Rule;
   my $package = 'Path::Extended::' . ($type eq 'file' ? 'File' : 'Dir' );
 
-  my @items = grep { $_ !~ m{/\.} }
-              map  { $self->_unixify($_) }
+  my @items = grep { $_->relative !~ m{/\.} }
+              map  { $package->new($_) }
               File::Find::Rule->$type->name($rule)->in($self->absolute);
 
   if ( $options{callback} ) {
     @items = $options{callback}->( @items );
   }
 
-  return grep { defined } map { $package->new($_) } @items;
+  return @items;
 }
 
 sub rmdir {
