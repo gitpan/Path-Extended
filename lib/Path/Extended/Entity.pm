@@ -5,7 +5,6 @@ use warnings;
 use File::Spec;
 use Log::Dump;
 use Scalar::Util qw( blessed );
-use Fatal;
 
 use overload
   '""'  => sub { shift->_path },

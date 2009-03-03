@@ -1,5 +1,8 @@
 Revision history for Path-Extended
 
+0.05 2009/03/04
+  - removed trash
+
 0.04 2009/03/04
   - logging part is replaced with a Log::Dump module.
   - some pod fixes
