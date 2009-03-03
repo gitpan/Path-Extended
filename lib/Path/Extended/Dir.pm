@@ -8,14 +8,10 @@ use Path::Extended::File;
 sub _initialize {
   my ($self, @args) = @_;
 
-  unless ( @args ) {
-    @args = Cwd::cwd();
-  }
-  my $dir = $self->_unixify(
-    File::Spec->rel2abs( File::Spec->catdir( @args ) )
-  );
+  my $dir = @args ? File::Spec->catdir( @args ) : File::Spec->curdir;
 
-  $self->{path} = $dir;
+  $self->{_absolute} = 1; # always true for ::Extended::Dir
+  $self->{path}    = $self->_unixify( File::Spec->rel2abs($dir) );
 
   $self;
 }
@@ -36,6 +32,8 @@ sub open {
 
   opendir my $dh, $self->absolute
     or do { $self->log( error => $! ); return; };
+
+  return $dh if $self->{_compat} && defined wantarray;
 
   $self->{handle} = $dh;
 
@@ -104,10 +102,9 @@ sub _find {
   return unless $type =~ /^(?:directory|file)$/;
 
   require File::Find::Rule;
-  my $package = 'Path::Extended::' . ($type eq 'file' ? 'File' : 'Dir' );
 
   my @items = grep { $_->relative !~ m{/\.} }
-              map  { $package->new($_) }
+              map  { $self->_related( $type, $_ ) }
               File::Find::Rule->$type->name($rule)->in($self->absolute);
 
   if ( $options{callback} ) {
@@ -128,6 +125,8 @@ sub rmdir {
   $self;
 }
 
+*rmtree = *remove = \&rmdir;
+
 sub mkdir {
   my $self = shift;
 
@@ -137,6 +136,25 @@ sub mkdir {
     do { $self->log( error => $@ ); return; } if $@;
   }
   $self;
+}
+
+*mkpath = \&mkdir;
+
+sub next {
+   my $self = shift;
+
+  $self->open unless $self->is_open;
+  my $next = $self->read;
+  unless ( defined $next ) {
+    $self->close;
+    return;
+  }
+  if ( -d File::Spec->catdir( $self->absolute, $next ) ) {
+    return $self->_related( dir => $next );
+  }
+  else {
+    return $self->_related( file => $next );
+  }
 }
 
 1;
@@ -172,11 +190,11 @@ takes a path or parts of a path of a directory (or a file in the case of C<new_f
 
 are simple wrappers of the corresponding built-in functions (with the trailing 'dir').
 
-=head2 mkdir
+=head2 mkdir, mkpath
 
 makes the directory via C<File::Path::mkpath>.
 
-=head2 rmdir
+=head2 rmdir, rmtree, remove
 
 removes the directory via C<File::Path::rmtree>.
 
@@ -191,6 +209,16 @@ takes a L<File::Find::Rule>'s rule and a hash option, and returns C<Path::Extend
 You can pass a code reference to filter the objects.
 
 =back
+
+=head2 next
+
+  while (my $file = $dir->next) {
+    next unless -f $file;
+    $file->openr or die "Can't read $file: $!";
+    ...
+  }
+
+returns a L<Path::Extended::Dir> or L<Path::Extended::File> object to iterate through directory contents (or C<undef> when there's no more items in the directory). The directory will be open with the first C<next>, and close with the last C<next>.
 
 =head1 AUTHOR
 

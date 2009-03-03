@@ -24,12 +24,12 @@ sub custom_logger : Test {
     $class->message('custom logger is used');
 }
 
-sub invalid_loggers : Tests(2) {
+sub invalid_loggers : Test {
   my $class = shift;
 
   my %loggers = (
     broken => MyBrokenTestLogger->new,
-    class  => 'MyTestLogger',
+#   class  => 'MyTestLogger',  # as Log::Dump allows class logger
   );
 
   foreach my $logger ( keys %loggers ) {

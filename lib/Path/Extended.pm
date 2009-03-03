@@ -6,7 +6,7 @@ use base qw( Exporter::Lite );
 use Path::Extended::File;
 use Path::Extended::Dir;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 our @EXPORT = our @EXPORT_OK = qw( file dir );
 
@@ -58,10 +58,6 @@ takes a directory name and returns a L<Path::Extended::Dir> object. The director
 Apparently this slash-converting approach of L<Path::Extended> doesn't work under some environments like (older) MacPerl that allow slashes in a file name.
 
 I'm not sure if I should also convert other separators like colons (:) to forward slashes under those environments, though I believe most of you (at least you of programmers) won't use slashes in file names no matter what OSes you use. This conversion may break things sometimes but one of the main aims of this module is not to break tests just because path separators differ, and tests usually don't require OS-specific paths, so I may convert them in the future releases. Patches and suggestions are welcome.
-
-=head1 TO DO OR NOT TO DO
-
-Do we really want a L<Path::Class> compatible version to make conversion easier (with a name of Path::Extended::Class, maybe)?
 
 =head1 SEE ALSO
 

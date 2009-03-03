@@ -10,7 +10,6 @@ WriteMakefile(
   ABSTRACT_FROM => 'lib/Path/Extended.pm',
   PREREQ_PM => {
     'Carp'                  => 0,
-    'Data::Dump'            => 0,
     'Encode'                => 0,
     'Exporter::Lite'        => 0,
     'Fcntl'                 => 0,
@@ -21,6 +20,7 @@ WriteMakefile(
     'File::Spec'            => 0,
     'File::stat'            => 0,
     'IO'                    => 1.23,
+    'Log::Dump'             => 0,
     'Scalar::Util'          => 0,
     'Test::Classy'          => '0.04',
     'Test::More'            => '0.47',

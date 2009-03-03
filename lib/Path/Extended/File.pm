@@ -8,11 +8,9 @@ use IO::Handle;
 sub _initialize {
   my ($self, @args) = @_;
 
-  my $file = $self->_unixify(
-    File::Spec->rel2abs( File::Spec->catfile( @args ) )
-  );
-
-  $self->{path} = $file;
+  my $file = File::Spec->catfile( @args );
+  $self->{_absolute} = 1; # always true for ::Extended::File
+  $self->{path}    = $self->_unixify( File::Spec->rel2abs($file) );
 }
 
 sub basename {
@@ -26,6 +24,8 @@ sub open {
 
   $self->close if $self->is_open;
 
+  $mode ||= 'r';
+
   my $fh;
   if ( $mode =~ /:/ ) {
     open $fh, $mode, $self->absolute
@@ -35,6 +35,8 @@ sub open {
     open $fh, IO::Handle::_open_mode_string($mode), $self->{path}
       or do { $self->log( error => $! ); return; };
   }
+
+  return $fh if $self->{_compat} && defined wantarray;
 
   $self->{handle} = $fh;
 
@@ -142,34 +144,57 @@ sub slurp {
     ? $args[0]
     : { @args };
 
-  if ( $self->open('r') ) {
-    $self->binmode if $options->{binmode};
-    my @callbacks;
-    my $callback = sub {
-      my $line = shift;
-      for my $subr (@callbacks) { $line = $subr->($line) }
-      $line
-    };
-    if ( $options->{chomp} ) {
-      push @callbacks, sub { my $line = shift; chomp $line; $line };
-    }
-    if ( $options->{decode} ) {
-      require Encode;
-      push @callbacks, sub {
-        Encode::decode( $options->{decode}, shift )
-      };
-    }
-    if ( $options->{callback} ) {
-      push @callbacks, $options->{callback};
-    }
-    my @lines = map { $callback->($_) } $self->getlines;
-    $self->close;
-    return wantarray ? @lines : join '', @lines;
-  }
-  else {
+  $self->open('r');
+  unless ( $self->is_open ) {
     $self->log( warn => "Can't read", $self->{path}, $! );
     return;
   }
+
+  $self->binmode if $options->{binmode};
+  my @callbacks;
+  my $callback = sub {
+    my $line = shift;
+    for my $subr (@callbacks) { $line = $subr->($line) }
+    $line
+  };
+  if ( $options->{chomp} ) {
+    push @callbacks, sub { my $line = shift; chomp $line; $line };
+  }
+  if ( $options->{decode} ) {
+    require Encode;
+    push @callbacks, sub {
+      Encode::decode( $options->{decode}, shift )
+    };
+  }
+  if ( $options->{callback} ) {
+    push @callbacks, $options->{callback};
+  }
+  my $filter;
+  if ( my $rule = $options->{filter} ) {
+    $filter = qr/$rule/;
+  }
+  $options->{ignore_return_value} = 1 if !defined wantarray;
+
+  my @lines;
+  while( defined (my $line = $self->getline )) {
+    $line = $callback->( local $_ = $line );
+    next if $filter && $line !~ /$filter/;
+    push @lines, $line unless $options->{ignore_return_value};
+  }
+  $self->close;
+  return wantarray ? @lines : join '', @lines;
+}
+
+sub grep {  # just a spoonful of sugar
+  my ($self, $rule, @args) = @_;
+
+  my $options = ( @args == 1 and ref $args[0] eq 'HASH' )
+    ? $args[0]
+    : { @args };
+
+  $options->{filter} = $rule;
+
+  $self->slurp($options);
 }
 
 sub save {
@@ -183,47 +208,46 @@ sub save {
     $self->parent->mkdir;
   }
   my $mode = $options->{mode} || $options->{append} ? '>>' : '>';
-  if ( $self->open($mode) ) {
-    if ( $options->{lock} ) {
-      unless ( $self->lock_ex ) {
-        $self->log( warn => "Can't lock", $self->{path}, $! );
-        return;
-      }
-    }
-    $self->binmode if $options->{binmode};
-
-    my @callbacks;
-    my $callback = sub {
-      my $line = shift;
-      for my $subr (@callbacks) { $line = $subr->($line) }
-      $line
-    };
-    if ( $options->{encode} ) {
-      require Encode;
-      push @callbacks, sub {
-        Encode::encode( $options->{encode}, shift )
-      };
-    }
-    if ( $options->{callback} ) {
-      push @callbacks, $options->{callback};
-    }
-
-    $self->print(
-      map { $callback->($_) }
-      ref $content eq 'ARRAY'
-        ? @{ $content }
-        : $content
-    );
-    $self->close;
-
-    if ( $options->{mtime} ) {
-      $self->utime( $options->{mtime} );
-    }
-  }
-  else {
+  $self->open($mode);
+  unless ( $self->is_open ) {
     $self->log( warn => "Can't save", $self->absolute, $! );
     return;
   }
+
+  if ( $options->{lock} ) {
+    unless ( $self->lock_ex ) {
+      $self->log( warn => "Can't lock", $self->{path}, $! );
+      return;
+    }
+  }
+  $self->binmode if $options->{binmode};
+
+  my @callbacks;
+  my $callback = sub {
+    my $line = shift;
+    for my $subr (@callbacks) { $line = $subr->($line) }
+    $line
+  };
+  if ( $options->{encode} ) {
+    require Encode;
+    push @callbacks, sub {
+      Encode::encode( $options->{encode}, shift )
+    };
+  }
+  if ( $options->{callback} ) {
+    push @callbacks, $options->{callback};
+  }
+
+  $self->print(
+    map { $callback->($_) }
+    ref $content eq 'ARRAY' ? @{ $content } : $content
+  );
+  $self->close;
+
+  if ( $options->{mtime} ) {
+    $self->utime( $options->{mtime} );
+  }
+
   $self;
 }
 
@@ -256,19 +280,7 @@ sub mtime {
   }
 }
 
-sub stat {
-  my $self = shift;
-
-  require File::stat;
-  File::stat::stat( $self->{handle} || $self->{path} );
-}
-
-sub lstat {
-  my $self = shift;
-
-  require File::stat;
-  File::stat::lstat( $self->{handle} || $self->{path} );
-}
+sub remove { shift->unlink(@_) }
 
 1;
 
@@ -280,9 +292,12 @@ Path::Extended::File
 
 =head1 SYNOPSIS
 
+  use Path::Extended::File;
+  my $file = Path::Extended::File->new('path/to/file');
+
 =head1 DESCRIPTION
 
-This class implements file-specific methods. Most of them are simple wrappers of the equivalents from various File::* or IO::* classes. See also L<Path::Class::Entity> for common methods like copy and move.
+This class implements file-specific methods. Most of them are simple wrappers of the equivalents from various File::* or IO::* classes. See also L<Path::Class::Entity> for common methods like C<copy> and C<move>.
 
 =head1 METHODS
 
@@ -300,7 +315,7 @@ opens the file with a specified mode, and returns the $self object to chain meth
 
 =head2 openr, openw
 
-These are shortcuts for C<->open("r")> and C<->open("w")> respectively.
+These are shortcuts for ->open("r") and ->open("w") respectively.
 
 =head2 sysopen
 
@@ -326,10 +341,6 @@ locks the stored file handle with C<flock>. No effect if the file is not open.
 
 are simple wrappers of the equirvalent built-in functions. Note that L<Path::Extended> doesn't export constants like C<SEEK_SET>, C<SEEK_CUR>, C<SEEK_END>.
 
-=head2 stat, lstat
-
-returns a File::stat object for the file/directory.
-
 =head2 mtime
 
 returns a mtime of the file/directory. If you pass an argument, you can change the mtime of the file/directory.
@@ -337,6 +348,10 @@ returns a mtime of the file/directory. If you pass an argument, you can change t
 =head2 size
 
 returns a size of the file/directory.
+
+=head2 remove
+
+unlink the file.
 
 =head2 slurp
 
@@ -362,7 +377,19 @@ decodes the lines with the specified encoding.
 
 does arbitrary things through the specified code reference.
 
+=item filter
+
+C<slurp> usually returns all the (processed) lines. With this option (which should be a string or a regex), C<slurp> returns only the lines that match the filter rule.
+
+=item ignore_return_value
+
+C<slurp> usually stores everything on memory, but sometimes you don't need a return value (especially when you do something with a C<callback>). If this is set to true, C<slurp> doesn't store lines on memory. Note that if you use C<slurp> in the void context, this will be set to true internally.
+
 =back
+
+=head2 grep
+
+  my @found = $file->grep('string or regex', ...);
 
 =head2 save
 

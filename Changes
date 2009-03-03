@@ -1,6 +1,12 @@
 Revision history for Path-Extended
 
-0.02 2008/10/27
+0.04 2009/03/04
+  - logging part is replaced with a Log::Dump module.
+  - some pod fixes
+  - added "grep" method to ::File.
+  - added Path::Extended::Class for better compatibility
+
+0.03 2008/10/27
   - now Path::Extended::Dir ignores only dot files/directories
     under the target directory while looking for something.
     (i.e. don't care if they are under .cpan directory)

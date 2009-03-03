@@ -3,7 +3,9 @@ package Path::Extended::Entity;
 use strict;
 use warnings;
 use File::Spec;
+use Log::Dump;
 use Scalar::Util qw( blessed );
+use Fatal;
 
 use overload
   '""'  => sub { shift->_path },
@@ -21,62 +23,62 @@ sub new {
 
 sub _initialize {}
 
-sub _path   { shift->{path} }
+sub _related {
+  my ($self, $type, @parts) = @_;
+
+  my $class = 'Path::Extended::';
+  $class .= 'Class::' if $self->{_compat};
+  $class .= $type eq 'file' ? 'File' : 'Dir';
+  eval "require $class" or die $@;
+  my $item = $class->new( $self->absolute, @parts );
+  foreach my $key ( grep /^_/, keys %{ $self } ) {
+    $item->{$key} = $self->{$key};
+  }
+  $item;
+}
+
 sub _handle { shift->{handle} }
 
-sub is_open { shift->{handle} ? 1 : 0 }
-
-sub logger {
-  my $class = shift;
-  @_ ? $class->{logger} = shift : $class->{logger};
-}
-
-sub log {
+sub _path {
   my $self = shift;
-
-  if ( blessed $self->logger and $self->logger->can('log') ) {
-    $self->logger->log(@_);
-  }
-  elsif ( defined $self->{logger} and !$self->{logger} ) {
-    return;
-  }
-  else {
-    my $level = shift;
-
-    require Data::Dump;
-    my $msg = join '', map { ref $_ ? Data::Dump::dump($_) : $_ } @_;
-
-    if ( $level eq 'fatal' ) {
-      require Carp;
-      Carp::croak "[$level] $msg";
-    }
-    elsif ( $level eq 'error' or $level eq 'warn' ) {
-      require Carp;
-      Carp::carp "[$level] $msg";
-    }
-    else {
-      print STDERR "[$level] $msg\n";
-    }
-  }
+  return ( $self->is_absolute ) ? $self->absolute : $self->relative;
 }
+
+sub stringify { shift->_path }
+
+sub is_open     { shift->{handle}      ? 1 : 0 }
+sub is_absolute { shift->{_absolute} ? 1 : 0 }
 
 sub absolute {
   my ($self, %options) = @_;
 
   my $path = File::Spec->canonpath( $self->{path} );
-     $path = $self->_unixify($path) unless $options{native};
-
-  $path;
+  if ( $options{native} ) {
+    return $path;
+  }
+  elsif ( $self->{_compat} ) {
+    my ($vol, @parts) = File::Spec->splitpath( $path );
+    return $self->_unixify( File::Spec->catdir( @parts ) );
+  }
+  else {
+    return $self->_unixify($path);
+  }
 }
 
 sub relative {
-  my ($self, %options) = @_;
+  my $self = shift;
+  my $base = shift if @_ % 2;
+  my %options = @_;
 
-  my $path = File::Spec->abs2rel( $self->{path}, $options{base} );
+  $base ||= $options{base};
+
+  my $path = File::Spec->abs2rel( $self->{path}, $base );
      $path = $self->_unixify($path) unless $options{native};
 
   $path;
 }
+
+sub parent { shift->_related( dir => '..' ); }
 
 sub unlink {
   my $self = shift;
@@ -160,11 +162,18 @@ sub _unixify {
   return $path;
 }
 
-sub parent {
+sub stat {
   my $self = shift;
 
-  require Path::Extended::Dir;
-  Path::Extended::Dir->new_from_file( $self->absolute );
+  require File::stat;
+  File::stat::stat( $self->{handle} || $self->{path} );
+}
+
+sub lstat {
+  my $self = shift;
+
+  require File::stat;
+  File::stat::lstat( $self->{handle} || $self->{path} );
 }
 
 1;
@@ -198,13 +207,17 @@ may take an optional hash, and returns an absolute path of the file/directory. N
 
 may take an optional hash, and returns a relative path of the file/directory (compared to the current directory (Cwd::cwd) by default, but you may change this bahavior by passing a C<base> option). Note that back slashes in the path will be converted to forward slashes unless you explicitly set a C<native> option to true.
 
+=head2 is_absolute
+
+returns if the path you passed to the constructor was absolute or not (note that the path stored in an object is always absolute).
+
 =head2 copy_to
 
-copies the file/directory to the destination by File::Copy::copy.
+copies the file/directory to the destination by C<File::Copy::copy>.
 
 =head2 move_to
 
-moves the file/directory to the destination by File::Copy::move. If the file/directory is open, it'll automatically close.
+moves the file/directory to the destination by C<File::Copy::move>. If the file/directory is open, it'll automatically close.
 
 =head2 rename_to
 
@@ -222,21 +235,25 @@ returns true if the file/directory exists.
 
 returns true if the file/directory is open.
 
+=head2 stat, lstat
+
+returns a File::stat object for the file/directory.
+
 =head2 parent
 
-returns a Path::Extended::Dir object that points to the parent directory of the file/directory.
+returns a L<Path::Extended::Dir> object that points to the parent directory of the file/directory.
 
-=head2 logger
+=head2 stringify
 
-You may optionally pass a logger object with C<log> method that accepts C<( loglevel => @log_messages )> array arguments to notifty when some (usually unfavorable) thing occurs. By default, a built-in L<Carp> logger will be used. If you want to disable log, set a false value to C<logger>.
+explicitly returns a path string.
 
-=head2 log
+=head2 log, logger, logfile, logfilter
 
-You can pass a loglevel and arbitrary messages to the logger. References will be dumped with L<Data::Dump> by default.
+You may optionally pass a logger object with C<log> method that accepts C<( label => @log_messages )> array arguments to notifty when some (usually unfavorable) thing occurs. By default, a built-in L<Carp> logger will be used. If you want to disable logging, set a false value to C<logger>. See L<Log::Dump> for details, and for how to use C<logfile> and C<logfilter> methods.
 
 =head1 SEE ALSO
 
-L<Path::Extended>, L<Path::Extended::File>, L<Path::Extended::Dir>
+L<Path::Extended>, L<Path::Extended::File>, L<Path::Extended::Dir>, L<Log::Dump>
 
 =head1 AUTHOR
 
