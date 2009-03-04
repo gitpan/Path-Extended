@@ -1,5 +1,8 @@
 Revision history for Path-Extended
 
+0.06 2009/03/04
+  - parent was broken
+
 0.05 2009/03/04
   - removed trash
 

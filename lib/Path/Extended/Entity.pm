@@ -29,7 +29,14 @@ sub _related {
   $class .= 'Class::' if $self->{_compat};
   $class .= $type eq 'file' ? 'File' : 'Dir';
   eval "require $class" or die $@;
-  my $item = $class->new( $self->absolute, @parts );
+  my $item;
+  if ( @parts && $parts[0] eq '..' ) { # parent
+    require File::Basename;
+    $item = $class->new( File::Basename::dirname($self->absolute) );
+  }
+  else {
+    $item = $class->new( $self->absolute, @parts );
+  }
   foreach my $key ( grep /^_/, keys %{ $self } ) {
     $item->{$key} = $self->{$key};
   }
