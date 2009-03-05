@@ -40,64 +40,64 @@ sub tests00_file : Tests(9) {
 sub tests01_dir : Tests(26) {
   my $class = shift;
 
-  my $dir = dir('t', 'testdir');
-  ok $dir, $class->message("test 11");
+  my $air = dir('t', 'testdir');
+  ok $air, $class->message("test 11");
 
-  $dir->remove if $dir->exists;
+  $air->remove if $air->exists;
 
-  ok mkdir($dir, 0777), $class->message("test 12");
-  ok -d $dir, $class->message("test 13");
+  ok mkdir($air, 0777), $class->message("test 12");
+  ok -d $air, $class->message("test 13");
 
-  my $file = $dir->file('foo.x');
+  my $file = $air->file('foo.x');
   $file->touch;
   ok -e $file, $class->message("test 14");
 
   {
-    my $dh = $dir->open;
-    ok $dh, $class->message("test 15");
+    my $ah = $air->open;
+    ok $ah, $class->message("test 15");
 
-    my @files = readdir $dh;
+    my @files = readdir $ah;
     is scalar @files, 3, $class->message("test 16");
     ok( (scalar grep { $_ eq 'foo.x' } @files), $class->message("test 17"));
   }
 
-  ok $dir->rmtree, $class->message("test 18");
-  ok !-e $dir, $class->message("test 19");
+  ok $air->rmtree, $class->message("test 18");
+  ok !-e $air, $class->message("test 19");
 
-  $dir = dir('t', 'foo', 'bar');
-  ok $dir->mkpath, $class->message("test 20");
-  ok -d $dir, $class->message("test 21");
+  $air = dir('t', 'foo', 'bar');
+  ok $air->mkpath, $class->message("test 20");
+  ok -d $air, $class->message("test 21");
 
-  $dir = $dir->parent;
-  ok $dir->rmtree, $class->message("test 22");
-  ok !-e $dir, $class->message("test 23");
+  $air = $air->parent;
+  ok $air->rmtree, $class->message("test 22");
+  ok !-e $air, $class->message("test 23");
 
-  $dir = dir('t', 'foo');
-  ok $dir->mkpath, $class->message("test 24");
-  ok $dir->subdir('dir')->mkpath, $class->message("test 25");
-  ok -d $dir->subdir('dir'), $class->message("test 26");
+  $air = dir('t', 'foo');
+  ok $air->mkpath, $class->message("test 24");
+  ok $air->subdir('dir')->mkpath, $class->message("test 25");
+  ok -d $air->subdir('dir'), $class->message("test 26");
 
-  ok $dir->file('file.x')->open('w'), $class->message("test 27");
-  ok $dir->file('0')->open('w'), $class->message("test 28");
+  ok $air->file('file.x')->open('w'), $class->message("test 27");
+  ok $air->file('0')->open('w'), $class->message("test 28");
 
   my @contents;
-  while (my $file = $dir->next) {
+  while (my $file = $air->next) {
     push @contents, $file;
   }
   is scalar @contents, 5, $class->message("test 29");
 
   my $joined = join ' ', map $_->basename, sort grep {-f $_} @contents;
   is $joined, '0 file.x', $class->message("test 30");
-  my ($subdir) = grep {$_ eq $dir->subdir('dir')} @contents;
+  my ($subdir) = grep {$_ eq $air->subdir('dir')} @contents;
   ok $subdir, $class->message("test 31");
   is -d $subdir, 1, $class->message("test 32");
 
-  ($file) = grep {$_ eq $dir->file('file.x')} @contents;
+  ($file) = grep {$_ eq $air->file('file.x')} @contents;
   ok $file, $class->message("test 33");
   is -d $file, '', $class->message("test 34");
 
-  ok $dir->rmtree, $class->message("test 35");
-  ok !-e $dir, $class->message("test 36");
+  ok $air->rmtree, $class->message("test 35");
+  ok !-e $air, $class->message("test 36");
 }
 
 sub tests02_slurp : Tests(6) {
@@ -148,7 +148,7 @@ sub tests04_subsumes : Tests(4) {
   $t->subdir('foo')->rmtree;
 }
 
-sub tests05_children : Tests(1) {
+sub tests05_recurse : Tests(17) {
   my $class = shift;
 
   (my $abe = dir(qw(a b e)))->mkpath;
@@ -158,12 +158,75 @@ sub tests05_children : Tests(1) {
   file($abe, 'g')->touch;
   file('a', 'b', 'd')->touch;
 
-  my $a = dir('a');
-  my @children = $a->children;
+  my $d = dir('a');
+  my @children = $d->children;
 
   is_deeply \@children, ['a/b', 'a/c'];
 
-  $a->rmtree;
+  {
+    recurse_test( $d,
+      preorder => 1, depthfirst => 0,  # The default
+      precedence => [qw(
+        a           a/b
+        a           a/c
+        a/b         a/b/e/h
+        a/b         a/c/f/i
+        a/c         a/b/e/h
+        a/c         a/c/f/i
+      )],
+    );
+  }
+
+  {
+    my $files = 
+      recurse_test( $d,
+        preorder => 1, depthfirst => 1,
+        precedence => [qw(
+          a           a/b
+          a           a/c
+          a/b         a/b/e/h
+          a/c         a/c/f/i
+        )],
+      );
+    is_depthfirst($files);
+  }
+
+  {
+    my $files = 
+      recurse_test( $d,
+        preorder => 0, depthfirst => 1,
+        precedence => [qw(
+          a/b         a
+          a/c         a
+          a/b/e/h     a/b
+          a/c/f/i     a/c
+        )],
+      );
+    is_depthfirst($files);
+  }
+
+  $d->rmtree;
+
+  sub is_depthfirst {
+    my $files = shift;
+    if ($files->{'a/b'} < $files->{'a/c'}) {
+      cmp_ok $files->{'a/b/e'}, '<', $files->{'a/c'}, "Ensure depth-first search";
+    } else {
+      cmp_ok $files->{'a/c/f'}, '<', $files->{'a/b'}, "Ensure depth-first search";
+    }
+  }
+
+  sub recurse_test {
+    my ($dir, %args) = @_;
+    my $precedence = delete $args{precedence};
+    my ($i, %files) = (0);
+    $dir->recurse( callback => sub {$files{shift->as_foreign('Unix')->stringify} = ++$i},
+		 %args );
+    while (my ($pre, $post) = splice @$precedence, 0, 2) {
+      cmp_ok $files{$pre}, '<', $files{$post}, "$pre should come before $post";
+    }
+    return \%files;
+  }
 }
 
 sub END {

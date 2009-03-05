@@ -6,7 +6,7 @@ use base qw( Exporter::Lite );
 use Path::Extended::File;
 use Path::Extended::Dir;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our @EXPORT = our @EXPORT_OK = qw( file dir );
 

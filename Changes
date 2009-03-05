@@ -1,5 +1,9 @@
 Revision history for Path-Extended
 
+0.07 2009/03/05
+  - reorganized some methods and added compatible "recurse"
+    and incompatible "new_foreign" methods.
+
 0.06 2009/03/04
   - parent was broken
 

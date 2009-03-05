@@ -9,13 +9,18 @@ sub _initialize {
 
   my $file = File::Spec->catfile( @args );
   $self->{path}      = $self->_unixify( File::Spec->rel2abs($file) );
+  $self->{is_dir}    = 0;
   $self->{_compat}   = 1;
   $self->{_absolute} = File::Spec->file_name_is_absolute( $file );
 
   $self;
 }
 
-sub is_dir     { 0 }
+sub new_foreign {
+  my ($class, $type, @args) = @_;
+  $class->new(@args);
+}
+
 sub dir        { shift->parent }
 sub volume     { shift->parent->volume }
 sub cleanup    { shift } # is always clean
@@ -33,10 +38,6 @@ Path::Extended::Class::File
 
 L<Path::Extended::Class::File> behaves pretty much like L<Path::Class::File> and can do some extra things. See appropriate pods for details.
 =head1 COMPATIBLE METHODS
-
-=head2 is_dir
-
-is just a convenient flag which is always false for L<Path::Extended::Class::File>.
 
 =head2 dir
 
@@ -56,15 +57,9 @@ does nothing but returns the object to chain. L<Path::Extended::Class> should al
 
 does nothing but returns the object to chain. L<Path::Extended::Class> doesn't support foreign path expressions.
 
-=head1 MISSING METHOD
+=head2 new_foreign
 
-As of writing this, following method is missing.
-
-=over 4
-
-=item new_foreign
-
-=back
+returns a new L<Path::Extended::Class::File> object whatever the type is specified.
 
 =head1 SEE ALSO
 

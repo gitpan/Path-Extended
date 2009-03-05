@@ -10,13 +10,18 @@ sub _initialize {
   my $dir = @args ? File::Spec->catdir( @args ) : File::Spec->curdir;
 
   $self->{path}      = $self->_unixify( File::Spec->rel2abs($dir) );
+  $self->{is_dir}    = 1;
   $self->{_compat}   = 1;
   $self->{_absolute} = File::Spec->file_name_is_absolute( $dir );
 
   $self;
 }
 
-sub is_dir     { 1 }
+sub new_foreign {
+  my ($class, $type, @args) = @_;
+  $class->new(@args);
+}
+
 sub cleanup    { shift } # is always clean
 sub as_foreign { shift } # does nothing
 
@@ -57,7 +62,7 @@ sub volume {
 sub subsumes {
   my ($self, $other) = @_;
 
-  die "No second entity given to subsumes()" unless $other;
+  Carp::croak "No second entity given to subsumes()" unless $other;
   $other = __PACKAGE__->new($other) unless UNIVERSAL::isa($other, __PACKAGE__);
   $other = $other->dir unless $other->is_dir;
 
@@ -83,20 +88,6 @@ sub contains {
   return !!(-d $self and (-e $other or -l $other) and $self->subsumes($other));
 }
 
-sub children {
-  my ($self, %options) = @_;
-
-  my $dh = $self->open or die "Can't open directory $self: $!";
-
-  my @children;
-  while ( my $entry = readdir $dh ) {
-    next if (!$options{all} && ( $entry eq '.' || $entry eq '..' ));
-    push @children,
-      ( -d $entry ) ? $self->subdir($entry) : $self->file($entry);
-  }
-  return @children;
-}
-
 1;
 
 __END__
@@ -110,14 +101,6 @@ Path::Extended::Class::Dir
 L<Path::Extended::Class::Dir> behaves pretty much like L<Path::Class::Dir> and can do some extra things. See appropriate pods for details.
 
 =head1 COMPATIBLE METHODS
-
-=head2 is_dir
-
-is just a convenient flag which is always true for L<Path::Extended::Class::Dir>.
-
-=head2 children
-
-returns a list of L<Path::Extended::Class::File> and/or L<Path::Extended::Class::Dir> objects listed in the directory. See L<Path::Class::Dir> for details.
 
 =head2 file, subdir
 
@@ -145,17 +128,9 @@ does nothing but returns the object to chain. L<Path::Extended::Class> should al
 
 does nothing but returns the object to chain. L<Path::Extended::Class> doesn't support foreign path expressions.
 
-=head1 MISSING METHODS
+=head2 new_foreign
 
-As of writing this, following methods are missing.
-
-=over 4
-
-=item new_foreign
-
-=item recursive
-
-=back
+returns a new L<Path::Extended::Class::Dir> object whatever the type is specified.
 
 =head1 SEE ALSO
 

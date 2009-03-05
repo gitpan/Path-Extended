@@ -2,6 +2,7 @@ package Path::Extended::Entity;
 
 use strict;
 use warnings;
+use Carp ();
 use File::Spec;
 use Log::Dump;
 use Scalar::Util qw( blessed );
@@ -28,7 +29,7 @@ sub _related {
   my $class = 'Path::Extended::';
   $class .= 'Class::' if $self->{_compat};
   $class .= $type eq 'file' ? 'File' : 'Dir';
-  eval "require $class" or die $@;
+  eval "require $class" or Carp::croak $@;
   my $item;
   if ( @parts && $parts[0] eq '..' ) { # parent
     require File::Basename;
@@ -52,8 +53,9 @@ sub _path {
 
 sub stringify { shift->_path }
 
+sub is_dir      { shift->{is_dir} }
 sub is_open     { shift->{handle}      ? 1 : 0 }
-sub is_absolute { shift->{_absolute} ? 1 : 0 }
+sub is_absolute { shift->{_absolute}   ? 1 : 0 }
 
 sub absolute {
   my ($self, %options) = @_;
@@ -216,6 +218,10 @@ may take an optional hash, and returns a relative path of the file/directory (co
 =head2 is_absolute
 
 returns if the path you passed to the constructor was absolute or not (note that the path stored in an object is always absolute).
+
+=head2 is_dir
+
+returns if the object represents directory or not.
 
 =head2 copy_to
 

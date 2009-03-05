@@ -11,7 +11,8 @@ sub _initialize {
   my $dir = @args ? File::Spec->catdir( @args ) : File::Spec->curdir;
 
   $self->{_absolute} = 1; # always true for ::Extended::Dir
-  $self->{path}    = $self->_unixify( File::Spec->rel2abs($dir) );
+  $self->{is_dir}    = 1;
+  $self->{path}      = $self->_unixify( File::Spec->rel2abs($dir) );
 
   $self;
 }
@@ -157,6 +158,61 @@ sub next {
   }
 }
 
+sub children {
+  my ($self, %options) = @_;
+
+  my $dh = $self->open or Carp::croak "Can't open directory $self: $!";
+
+  my @children;
+  while ( my $entry = readdir $dh ) {
+    next if (!$options{all} && ( $entry eq '.' || $entry eq '..' ));
+    my $type = ( -d File::Spec->catdir($self->absolute, $entry) )
+               ? 'dir' : 'file';
+    push @children, $self->_related( $type => $entry );
+  }
+  return @children;
+}
+
+sub recurse { # ripped from Path::Class::Dir
+  my $self = shift;
+  my %opts = (preorder => 1, depthfirst => 0, @_);
+
+  my $callback = $opts{callback}
+    or Carp::croak "Must provide a 'callback' parameter to recurse()";
+
+  my @queue = ($self);
+
+  my $visit_entry;
+  my $visit_dir = 
+    $opts{depthfirst} && $opts{preorder}
+    ? sub {
+      my $dir = shift;
+      $callback->($dir);
+      unshift @queue, $dir->children;
+    }
+    : $opts{preorder}
+    ? sub {
+      my $dir = shift;
+      $callback->($dir);
+      push @queue, $dir->children;
+    }
+    : sub {
+      my $dir = shift;
+      $visit_entry->($_) foreach $dir->children;
+      $callback->($dir);
+    };
+
+  $visit_entry = sub {
+    my $entry = shift;
+    if ($entry->is_dir) { $visit_dir->($entry) }
+    else { $callback->($entry) }
+  };
+
+  while (@queue) {
+    $visit_entry->( shift @queue );
+  }
+}
+
 1;
 
 __END__
@@ -219,6 +275,10 @@ You can pass a code reference to filter the objects.
   }
 
 returns a L<Path::Extended::Dir> or L<Path::Extended::File> object to iterate through directory contents (or C<undef> when there's no more items in the directory). The directory will be open with the first C<next>, and close with the last C<next>.
+
+=head2 children
+
+returns a list of L<Path::Extended::Class::File> and/or L<Path::Extended::Class::Dir> objects listed in the directory. See L<Path::Class::Dir> for details.
 
 =head1 AUTHOR
 
