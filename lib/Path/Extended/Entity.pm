@@ -35,6 +35,9 @@ sub _related {
     require File::Basename;
     $item = $class->new( File::Basename::dirname($self->absolute) );
   }
+  elsif ( @parts && File::Spec->file_name_is_absolute($parts[0]) ) {
+    $item = $class->new( @parts );
+  }
   else {
     $item = $class->new( $self->absolute, @parts );
   }

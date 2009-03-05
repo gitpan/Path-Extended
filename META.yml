@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Path-Extended
-version:            0.07
+version:            0.08
 abstract:           yet another Path class
 author:
     - Kenichi Ishigaki <ishigaki@cpan.org>

@@ -5,16 +5,19 @@ use warnings;
 use Test::Classy::Base;
 use Path::Extended;
 
-sub find : Tests(4) {
+sub find : Tests(7) {
   my $class = shift;
 
   my $dir = dir('t/tmp/find')->mkdir;
+  ok $dir->exists, $class->message('created '.$dir->relative);
 
   my $file1 = file('t/tmp/find/some.txt');
      $file1->save('some content');
+  ok $file1->exists, $class->message('created '.$file1->relative);
 
   my $file2 = file('t/tmp/find/other.txt');
      $file2->save('other content');
+  ok $file2->exists, $class->message('created '.$file2->relative);
 
   my @files = $dir->find('*.txt');
   ok @files, $class->message('found '.(scalar @files).' files');
@@ -34,12 +37,15 @@ sub find : Tests(4) {
   $dir->rmdir;
 }
 
-sub find_dir : Tests(4) {
+sub find_dir : Tests(6) {
   my $class = shift;
 
   my $dir  = dir('t/tmp/find_dir');
   my $dir1 = dir('t/tmp/find_dir/found')->mkdir;
+  ok $dir1->exists, $class->message('created '.$dir1->relative);
+
   my $dir2 = dir('t/tmp/find_dir/not_found')->mkdir;
+  ok $dir2->exists, $class->message('created '.$dir2->relative);
 
   my $rule = '*';
 
