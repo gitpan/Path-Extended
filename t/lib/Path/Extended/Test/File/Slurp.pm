@@ -73,7 +73,16 @@ sub callback : Tests(2) {
   ok $lines[0] eq "first daughter\n", $class->message('callback worked');
 
   $file->unlink;
+}
 
+sub mtime : Tests(2) {
+  my $class = shift;
+
+  my $file = file('t/tmp/slurp.txt');
+  ok $file->save("first line\nsecond line\n", mtime => time - 30000), $class->message('file saved');
+  ok $file->mtime < time - 10000, $class->message('mtime worked');
+
+  $file->unlink;
 }
 
 1;

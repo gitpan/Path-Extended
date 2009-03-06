@@ -1,5 +1,8 @@
 Revision history for Path-Extended
 
+0.09 2009/03/06
+  - "mtime" option of "save" didn't work well.
+
 0.08 2009/03/05
   - fixed relative/absolute path issue
 

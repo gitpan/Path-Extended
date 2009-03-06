@@ -246,7 +246,7 @@ sub save {
   $self->close;
 
   if ( $options->{mtime} ) {
-    $self->utime( $options->{mtime} );
+    $self->mtime( $options->{mtime} );
   }
 
   $self;
