@@ -29,12 +29,13 @@ sub test01_file2 : Tests(4) {
   ok $file->basename eq 'bar.txt', $class->message("test 09");
 }
 
-sub test02_dir1 : Tests(6) {
+sub test02_dir1 : Tests(7) {
   my $class = shift;
 
   my $dir = dir('tmp');
   ok $dir eq 'tmp', $class->message("test 10");
   ok !$dir->is_absolute, $class->message("test 11");
+  ok $dir->basename eq 'tmp', $class->message("RT 17312");
 
   my $cat = file($dir, 'foo');
   ok $cat eq 'tmp/foo', $class->message("test 14");
@@ -44,7 +45,7 @@ sub test02_dir1 : Tests(6) {
   ok $cat->basename eq 'foo', $class->message("test 17");
 }
 
-sub test03_dir2 : Tests(8) {
+sub test03_dir2 : Tests(9) {
   my $class = shift;
 
   my $dir = dir('/tmp');
@@ -61,6 +62,7 @@ sub test03_dir2 : Tests(8) {
   $cat = $dir->subdir('foo');
   ok $cat eq '/tmp/foo', $class->message("test 22");
   ok $cat->isa('Path::Extended::Class::Dir'), $class->message("test 23");
+  ok $cat->basename eq 'foo', $class->message("RT 17312");
 }
 
 sub test04_cleanup : Tests(3) {
@@ -119,7 +121,7 @@ sub tests08_dir_list : Tests(11) {
   my $class = shift;
   my $dir = dir('one/two/three/four/five');
   my @d = $dir->dir_list();
-  ok "@d" eq "one two three four five", $class->message("test 47"."@d");
+  ok "@d" eq "one two three four five", $class->message("test 47");
 
   @d = $dir->dir_list(2);
   ok "@d" eq "three four five", $class->message("test 48");

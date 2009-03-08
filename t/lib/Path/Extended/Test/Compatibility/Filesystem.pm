@@ -159,7 +159,7 @@ sub tests05_recurse : Tests(17) {
   file('a', 'b', 'd')->touch;
 
   my $d = dir('a');
-  my @children = $d->children;
+  my @children = sort $d->children; # following test breaks sometimes
 
   is_deeply \@children, ['a/b', 'a/c'];
 

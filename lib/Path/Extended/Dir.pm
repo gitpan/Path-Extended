@@ -26,6 +26,20 @@ sub new_from_file {
   my $self = $class->new( $dir );
 }
 
+sub _parts {
+  my ($self, $abs) = @_;
+
+  my $path = $abs ? $self->absolute : $self->_path;
+  my ($vol, $dir, $file) = File::Spec->splitpath( $path );
+  return split '/', "$dir$file";
+}
+
+sub basename {
+  my $self = shift;
+
+  return ($self->_parts)[-1];
+}
+
 sub open {
   my $self = shift;
 
@@ -118,6 +132,8 @@ sub _find {
 sub rmdir {
   my $self = shift;
 
+  $self->close if $self->is_open;
+
   if ( $self->exists ) {
     require File::Path;
     eval { File::Path::rmtree( $self->absolute ) };
@@ -158,6 +174,9 @@ sub next {
   }
 }
 
+sub file   { shift->_related( file => @_ ); }
+sub subdir { shift->_related( dir  => @_ ); }
+
 sub children {
   my ($self, %options) = @_;
 
@@ -170,6 +189,7 @@ sub children {
                ? 'dir' : 'file';
     push @children, $self->_related( $type => $entry );
   }
+  $self->close;
   return @children;
 }
 
@@ -242,6 +262,10 @@ This class implements several directory-specific methods. See also L<Path::Class
 
 takes a path or parts of a path of a directory (or a file in the case of C<new_from_file>), and creates a L<Path::Extended::Dir> object. If the path specified is a relative one, it will be converted to the absolute one internally. 
 
+=head2 basename
+
+returns the last part of the directory.
+
 =head2 open, close, read, seek, tell, rewind
 
 are simple wrappers of the corresponding built-in functions (with the trailing 'dir').
@@ -274,11 +298,36 @@ You can pass a code reference to filter the objects.
     ...
   }
 
-returns a L<Path::Extended::Dir> or L<Path::Extended::File> object to iterate through directory contents (or C<undef> when there's no more items in the directory). The directory will be open with the first C<next>, and close with the last C<next>.
+returns a L<Path::Extended::Dir> or L<Path::Extended::File> object while iterating through the directory (or C<undef> when there's no more items there). The directory will be open with the first C<next>, and close with the last C<next>.
 
 =head2 children
 
 returns a list of L<Path::Extended::Class::File> and/or L<Path::Extended::Class::Dir> objects listed in the directory. See L<Path::Class::Dir> for details.
+
+=head2 file, subdir
+
+returns a child L<Path::Extended::Class::File>/L<Path::Extended::Class::Dir> object in the directory.
+
+=head2 recurse
+
+  dir('path/to/somewhere')->recurse( callback => sub {
+    my $file_or_dir = shift;
+    ...
+  });
+
+takes a hash and iterates through the directory and all its subdirectories recursively, and call the callback function for each entry. Options are:
+
+=over 4
+
+=item callback
+
+a code reference to call for each entry.
+
+=item depthfirst, preorder
+
+flags to change the order of processing.
+
+=back
 
 =head1 AUTHOR
 

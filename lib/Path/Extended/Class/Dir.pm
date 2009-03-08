@@ -25,9 +25,6 @@ sub new_foreign {
 sub cleanup    { shift } # is always clean
 sub as_foreign { shift } # does nothing
 
-sub file   { shift->_related( file => @_ ); }
-sub subdir { shift->_related( dir  => @_ ); }
-
 sub dir_list {
   my $self = shift;
 
@@ -44,14 +41,6 @@ sub dir_list {
   return @parts[$offset .. $length + $offset - 1];
 }
 
-sub _parts {
-  my ($self, $abs) = @_;
-
-  my $path = $abs ? $self->absolute : $self->_path;
-  my ($vol, $dir, $file) = File::Spec->splitpath( $path );
-  return split '/', "$dir$file";
-}
-
 sub volume {
   my $self = shift;
 
@@ -63,7 +52,8 @@ sub subsumes {
   my ($self, $other) = @_;
 
   Carp::croak "No second entity given to subsumes()" unless $other;
-  $other = __PACKAGE__->new($other) unless UNIVERSAL::isa($other, __PACKAGE__);
+  my $class = $self->_class('dir');
+  $other = $class->new($other) unless UNIVERSAL::isa($other, $class);
   $other = $other->dir unless $other->is_dir;
 
   if ( $self->volume ) {
@@ -101,10 +91,6 @@ Path::Extended::Class::Dir
 L<Path::Extended::Class::Dir> behaves pretty much like L<Path::Class::Dir> and can do some extra things. See appropriate pods for details.
 
 =head1 COMPATIBLE METHODS
-
-=head2 file, subdir
-
-returns a child L<Path::Extended::Class::File>/L<Path::Extended::Class::Dir> object in the directory. See L<Path::Class::Dir> for details.
 
 =head2 volume
 

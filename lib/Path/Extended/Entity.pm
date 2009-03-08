@@ -23,12 +23,18 @@ sub new {
 
 sub _initialize {}
 
+sub _class {
+  my ($self, $type) = @_;
+  my $class = ref $self;
+  $class =~ s/::(?:File|Dir|Entity)$//;
+  return $class unless $type;
+  return $class.'::'.($type eq 'file' ? 'File' : 'Dir');
+}
+
 sub _related {
   my ($self, $type, @parts) = @_;
 
-  my $class = 'Path::Extended::';
-  $class .= 'Class::' if $self->{_compat};
-  $class .= $type eq 'file' ? 'File' : 'Dir';
+  my $class = $self->_class($type);
   eval "require $class" or Carp::croak $@;
   my $item;
   if ( @parts && $parts[0] eq '..' ) { # parent
@@ -45,6 +51,14 @@ sub _related {
     $item->{$key} = $self->{$key};
   }
   $item;
+}
+
+sub _unixify {
+  my ($self, $path) = @_;
+
+  $path =~ s{\\}{/}g if $^O eq 'MSWin32';
+
+  return $path;
 }
 
 sub _handle { shift->{handle} }
@@ -163,14 +177,6 @@ sub rename_to {
   $self->{path} = $destination->absolute;
 
   $self;
-}
-
-sub _unixify {
-  my ($self, $path) = @_;
-
-  $path =~ s{\\}{/}g if $^O eq 'MSWin32';
-
-  return $path;
 }
 
 sub stat {

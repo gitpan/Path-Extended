@@ -2,14 +2,7 @@ package Path::Extended::Class;
 
 use strict;
 use warnings;
-use base qw( Exporter::Lite );
-use Path::Extended::Class::File;
-use Path::Extended::Class::Dir;
-
-our @EXPORT = our @EXPORT_OK = qw( file dir );
-
-sub file { Path::Extended::Class::File->new( @_ ) }
-sub dir  { Path::Extended::Class::Dir->new( @_ ) }
+use base qw( Path::Extended );
 
 1;
 
@@ -27,7 +20,7 @@ Path::Extended::Class
 
 =head1 DESCRIPTION
 
-If you want some functionality of L<Path::Extended> but also want more L<Path::Class>-compatible API, try L<Path::Extended::Class>, which is built upon L<Path::Extended> and passes many of the L<Path::Class> tests. What you may miss are foreign expressions, C<recurse> method for a directory, and C<absolute>/C<relative> chains (those of L<Path::Extended::Class> return a string instead of an object).
+If you want some functionality of L<Path::Extended> but also want more L<Path::Class>-compatible API, try L<Path::Extended::Class>, which is built upon L<Path::Extended> and passes many of the L<Path::Class> tests. What you may miss are foreign expressions, and C<absolute>/C<relative> chains (those of L<Path::Extended::Class> return a string instead of an object).
 
 =head1 FUNCTIONS
 

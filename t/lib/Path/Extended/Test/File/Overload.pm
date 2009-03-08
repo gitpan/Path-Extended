@@ -3,7 +3,16 @@ package Path::Extended::Test::File::Overload;
 use strict;
 use warnings;
 use Test::Classy::Base;
-use Path::Extended;
+
+__PACKAGE__->mk_classdata( target => 'Path::Extended' );
+
+sub initialize {
+  my $class = shift;
+
+  my $target = $class->target;
+  eval "require $target" or $class->skip_this_class($@);
+  $target->import;
+}
 
 sub compare : Tests(2) {
   my $class = shift;

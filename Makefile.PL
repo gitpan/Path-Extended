@@ -11,7 +11,6 @@ WriteMakefile(
   PREREQ_PM => {
     'Carp'                  => 0,
     'Encode'                => 0,
-    'Exporter::Lite'        => 0,
     'Fcntl'                 => 0,
     'File::Basename'        => 0,
     'File::Copy::Recursive' => 0,
@@ -22,6 +21,7 @@ WriteMakefile(
     'IO'                    => 1.23,
     'Log::Dump'             => 0,
     'Scalar::Util'          => 0,
+    'Sub::Install'          => 0,
     'Test::Classy'          => '0.04',
     'Test::More'            => '0.47',
     'Test::UseAllModules'   => '0.09',

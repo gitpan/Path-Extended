@@ -2,16 +2,32 @@ package Path::Extended;
 
 use strict;
 use warnings;
-use base qw( Exporter::Lite );
-use Path::Extended::File;
-use Path::Extended::Dir;
+use Sub::Install;
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
-our @EXPORT = our @EXPORT_OK = qw( file dir );
+sub import {
+  my ($class, @imports) = @_;
 
-sub file { Path::Extended::File->new( @_ ) }
-sub dir  { Path::Extended::Dir->new( @_ ) }
+  my $caller = caller;
+
+  @imports = qw( file dir ) unless @imports;
+  foreach my $import (@imports) {
+    next unless $import =~ /^(?:file|dir)$/;
+    my $target = $class.'::'.ucfirst($import);
+    eval "require $target" or die $@;
+    Sub::Install::install_sub({
+      as   => $import,
+      into => $caller,
+      code => sub { $target->new(@_) },
+    });
+    Sub::Install::reinstall_sub({
+      as   => $import,
+      into => $class,
+      code => sub { $target->new(@_) },
+    });
+  }
+}
 
 1;
 
