@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use base qw( Path::Extended::Entity );
 use IO::Handle;
+use Sub::Install;
 
 sub _initialize {
   my ($self, @args) = @_;
@@ -83,19 +84,25 @@ sub binmode {
   }
 }
 
-sub print     { return unless $_[0]->is_open; shift->{handle}->print(@_); }
-sub printf    { return unless $_[0]->is_open; shift->{handle}->printf(@_); }
-sub say       { return unless $_[0]->is_open; shift->{handle}->say(@_); }
-sub getline   { return unless $_[0]->is_open; shift->{handle}->getline(@_); }
-sub getlines  { return unless $_[0]->is_open; shift->{handle}->getlines(@_); }
-sub read      { return unless $_[0]->is_open; shift->{handle}->read(@_); }
-sub sysread   { return unless $_[0]->is_open; shift->{handle}->sysread(@_); }
-sub write     { return unless $_[0]->is_open; shift->{handle}->write(@_); }
-sub syswrite  { return unless $_[0]->is_open; shift->{handle}->syswrite(@_); }
-sub autoflush { return unless $_[0]->is_open; shift->{handle}->autoflush(@_); }
+BEGIN {
+  my @io_methods = qw(
+    print printf say getline getlines read sysread write syswrite
+    autoflush flush printflush getc ungetc truncate blocking
+    eof fileno error sync fcntl ioctl
+  );
 
-sub lock_ex   { return unless $_[0]->is_open; shift->_lock }
-sub lock_sh   { return unless $_[0]->is_open; shift->_lock('share') }
+  foreach my $method (@io_methods) {
+    Sub::Install::install_sub({
+      as   => $method,
+      code => sub {
+        return unless $_[0]->is_open; shift->{handle}->$method(@_);
+      },
+    });
+  }
+}
+
+sub lock_ex { return unless $_[0]->is_open; shift->_lock }
+sub lock_sh { return unless $_[0]->is_open; shift->_lock('share') }
 
 sub _lock {
   my ($self, $mode) = @_;
@@ -129,7 +136,7 @@ sub sysseek {
 }
 
 sub tell {
-  my ($self, $pos, $whence) = @_;
+  my $self = shift;
 
   return unless $self->is_open;
 
@@ -155,8 +162,8 @@ sub slurp {
   my @callbacks;
   my $callback = sub {
     my $line = shift;
-    for my $subr (@callbacks) { $line = $subr->($line) }
-    $line
+    for my $subr (@callbacks) { $line = $subr->(local $_ = $line) }
+    $line;
   };
   if ( $options->{chomp} ) {
     push @callbacks, sub { my $line = shift; chomp $line; $line };
@@ -178,7 +185,7 @@ sub slurp {
 
   my @lines;
   while( defined (my $line = $self->getline )) {
-    $line = $callback->( local $_ = $line );
+    $line = $callback->($line);
     next if $filter && $line !~ /$filter/;
     push @lines, $line unless $options->{ignore_return_value};
   }
@@ -226,7 +233,7 @@ sub save {
   my @callbacks;
   my $callback = sub {
     my $line = shift;
-    for my $subr (@callbacks) { $line = $subr->($line) }
+    for my $subr (@callbacks) { $line = $subr->(local $_ = $line) }
     $line
   };
   if ( $options->{encode} ) {
@@ -296,6 +303,33 @@ Path::Extended::File
   use Path::Extended::File;
   my $file = Path::Extended::File->new('path/to/file');
 
+  # you can get information of the file
+  print $file->basename;  # file
+  print $file->absolute;  # /absolute/path/to/file
+
+  # you can get an object for the parent directory
+  my $parent_dir = $file->parent;
+
+  # Path::Extended::File object works like an IO handle
+  $file->openr;
+  my $first_line = $file->getline;
+  print <$file>;
+  close $file;
+
+  # it also can do some extra file related tasks
+  $file->copy_to('/other/path/to/file');
+  $file->unlink if $file->exists;
+
+  $file->slurp(chomp => 1, callback => sub {
+    my $line = shift;
+    print $line, "\n" unless substr($line, 0, 1) eq '#';
+  });
+
+  file('/path/to/other_file')->save(\@lines, { mkdir => 1 });
+
+  # it has a logger, too
+  $file->log( fatal => "Couldn't open $file: $!" );
+
 =head1 DESCRIPTION
 
 This class implements file-specific methods. Most of them are simple wrappers of the equivalents from various File::* or IO::* classes. See also L<Path::Class::Entity> for common methods like C<copy> and C<move>.
@@ -330,7 +364,7 @@ may take an argument (to specify I/O layers), and arranges for the stored file h
 
 closes the stored file handle and removes it from the object. No effect if the file is not open.
 
-=head2 print, printf, say, getline, getlines, read, write, sysread, syswrite, autoflush
+=head2 print, printf, say, getline, getlines, read, sysread, write, syswrite, autoflush, flush, printflush, getc, ungetc, truncate, blocking, eof, fileno, error, sync, fcntl, ioctl
 
 are simple wrappers of the equivalents of L<IO::Handle>. No effect if the file is not open.
 
