@@ -118,6 +118,18 @@ sub exists {
   -e $self->absolute ? 1 : 0;
 }
 
+sub is_writable {
+  my $self = shift;
+
+  -w $self->absolute ? 1 : 0;
+}
+
+sub is_readable {
+  my $self = shift;
+
+  -r $self->absolute ? 1 : 0;
+}
+
 sub copy_to {
   my ($self, $destination) = @_;
 
@@ -252,6 +264,10 @@ unlinks the file/directory. The same thing can be said as for the C<rename_to> m
 
 returns true if the file/directory exists.
 
+=head2 is_readable, is_writable
+
+returns true if the file/directory is readable/writable.
+
 =head2 is_open
 
 returns true if the file/directory is open.
@@ -270,7 +286,7 @@ explicitly returns a path string.
 
 =head2 log, logger, logfile, logfilter
 
-You may optionally pass a logger object with C<log> method that accepts C<( label => @log_messages )> array arguments to notifty when some (usually unfavorable) thing occurs. By default, a built-in L<Carp> logger will be used. If you want to disable logging, set a false value to C<logger>. See L<Log::Dump> for details, and for how to use C<logfile> and C<logfilter> methods.
+You may optionally pass a logger object with C<log> method that accepts C<< ( label => @log_messages ) >> array arguments to notifty when some (usually unfavorable) thing occurs. By default, a built-in L<Carp> logger will be used. If you want to disable logging, set a false value to C<logger>. See L<Log::Dump> for details, and for how to use C<logfile> and C<logfilter> methods.
 
 =head1 SEE ALSO
 
