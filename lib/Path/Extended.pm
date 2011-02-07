@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Sub::Install;
 
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 
 sub import {
   my ($class, @imports) = @_;
@@ -37,7 +37,7 @@ sub import {
   foreach my $name (@imports) {
     next unless $map{$name};
 
-    Sub::Install::install_sub({
+    Sub::Install::reinstall_sub({
       as   => $name,
       into => $caller,
       code => $map{$name},

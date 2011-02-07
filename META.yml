@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Path-Extended
-version:            0.17
+version:            0.18
 abstract:           yet another Path class
 author:
     - Kenichi Ishigaki <ishigaki@cpan.org>
@@ -18,7 +18,7 @@ requires:
     File::Copy::Recursive:  0
     File::Find::Rule:     0
     File::Path:           0
-    File::Spec:           0
+    File::Spec:           3.23
     File::stat:           0
     IO:                   1.23
     Log::Dump:            0
@@ -31,7 +31,7 @@ no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.52
+generated_by:       ExtUtils::MakeMaker version 6.56
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4
