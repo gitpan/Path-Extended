@@ -21,6 +21,20 @@ sub new_foreign {
   $class->new(@args);
 }
 
+sub absolute {
+  my $self = shift;
+  $self->{_base} = undef;
+  $self;
+}
+
+sub relative {
+  my $self = shift;
+  my $base = @_ % 2 ? shift : undef;
+  my %options = @_;
+  $self->{_base} = $base || $options{$base} || File::Spec->curdir;
+  $self;
+}
+
 sub dir        { shift->parent }
 sub volume     { shift->parent->volume }
 sub cleanup    { shift } # is always clean
@@ -42,6 +56,10 @@ L<Path::Extended::Class::File> behaves pretty much like L<Path::Class::File> and
 =head2 dir
 
 returns a parent L<Path::Extended::Class::Dir> object of the file.
+
+=head2 absolute, relative
+
+change how to stringify internally and return the file object (instead of the path itself).
 
 =head2 volume
 

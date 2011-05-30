@@ -29,7 +29,7 @@ sub new_from_file {
 sub _parts {
   my ($self, $abs) = @_;
 
-  my $path = $abs ? $self->absolute : $self->path;
+  my $path = $abs ? $self->_absolute : $self->path;
   my ($vol, $dir, $file) = File::Spec->splitpath( $path );
   return split '/', "$dir$file";
 }
@@ -45,7 +45,7 @@ sub open {
 
   $self->close if $self->is_open;
 
-  opendir my $dh, $self->absolute
+  opendir my $dh, $self->_absolute
     or do { $self->log( error => $! ); return; };
 
   return $dh if $self->{_compat} && defined wantarray;
@@ -118,9 +118,9 @@ sub _find {
 
   require File::Find::Rule;
 
-  my @items = grep { $_->relative($self->absolute) !~ m{/\.} }
+  my @items = grep { $_->_relative($self->_absolute) !~ m{/\.} }
               map  { $self->_related( $type, $_ ) }
-              File::Find::Rule->$type->name($rule)->in($self->absolute);
+              File::Find::Rule->$type->name($rule)->in($self->_absolute);
 
   if ( $options{callback} ) {
     @items = $options{callback}->( @items );
@@ -136,7 +136,7 @@ sub rmdir {
 
   if ( $self->exists ) {
     require File::Path;
-    eval { File::Path::rmtree( $self->absolute ) };
+    eval { File::Path::rmtree( $self->_absolute ) };
     do { $self->log( error => $@ ); return; } if $@;
   }
   $self;
@@ -149,7 +149,7 @@ sub mkdir {
 
   unless ( $self->exists ) {
     require File::Path;
-    eval { File::Path::mkpath( $self->absolute ) };
+    eval { File::Path::mkpath( $self->_absolute ) };
     do { $self->log( error => $@ ); return; } if $@;
   }
   $self;
@@ -166,7 +166,7 @@ sub next {
     $self->close;
     return;
   }
-  if ( -d File::Spec->catdir( $self->absolute, $next ) ) {
+  if ( -d File::Spec->catdir( $self->_absolute, $next ) ) {
     return $self->_related( dir => $next );
   }
   else {
@@ -181,7 +181,7 @@ sub file_or_dir {
   my ($self, @args) = @_;
 
   my $file = $self->_related( file => @args );
-  return $self->_related( dir => @args ) if -d $file->absolute;
+  return $self->_related( dir => @args ) if -d $file->_absolute;
   return $file;
 }
 
@@ -189,7 +189,7 @@ sub dir_or_file {
   my ($self, @args) = @_;
 
   my $dir = $self->_related( dir => @args );
-  return $self->_related( file => @args ) if -f $dir->absolute;
+  return $self->_related( file => @args ) if -f $dir->_absolute;
   return $dir;
 }
 
@@ -199,12 +199,12 @@ sub children {
   my $dh = $self->open or Carp::croak "Can't open directory $self: $!";
 
   my @children;
-  while ( my $entry = readdir $dh ) {
+  while (defined(my $entry = readdir $dh)) {
     next if (!$options{all} && ( $entry eq '.' || $entry eq '..' ));
-    my $type = ( -d File::Spec->catdir($self->absolute, $entry) )
+    my $type = ( -d File::Spec->catdir($self->_absolute, $entry) )
                ? 'dir' : 'file';
     my $child = $self->_related( $type => $entry );
-    if ($options{prune}) {
+    if ($options{prune} or $options{no_hidden}) {
       if (ref $options{prune} eq 'Regexp') {
         next if $entry =~ /$options{prune}/;
       }
@@ -259,6 +259,43 @@ sub recurse { # adapted from Path::Class::Dir
   while (@queue) {
     $visit_entry->( shift @queue );
   }
+}
+
+sub volume {
+  my $self = shift;
+
+  my ($vol) = File::Spec->splitpath( $self->path );
+  return $vol;
+}
+
+sub subsumes {
+  my ($self, $other) = @_;
+
+  Carp::croak "No second entity given to subsumes()" unless $other;
+  my $class = $self->_class('dir');
+  $other = $class->new($other) unless UNIVERSAL::isa($other, $class);
+  $other = $other->dir unless $other->is_dir;
+
+  if ( $self->volume ) {
+    return 0 unless $other->volume eq $self->volume;
+  }
+
+  my @my_parts    = $self->_parts(1);
+  my @other_parts = $other->_parts(1);
+
+  return 0 if @my_parts > @other_parts;
+
+  my $i = 0;
+  while ( $i < @my_parts ) {
+    return 0 unless $my_parts[$i] eq $other_parts[$i];
+    $i++;
+  }
+  return 1;
+}
+
+sub contains {
+  my ($self, $other) = @_;
+  return !!(-d $self and (-e $other or -l $other) and $self->subsumes($other));
 }
 
 1;
@@ -418,6 +455,14 @@ As of 0.13, you can use this option to prune some of the directory tree. You can
   }
 
 =back
+
+=head2 subsumes, contains
+
+returns if the path belongs to the object, or vice versa. See L<Path::Class::Dir> for details.
+
+=head2 volume
+
+returns a volume of the path (if any).
 
 =head1 AUTHOR
 

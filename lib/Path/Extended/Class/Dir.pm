@@ -7,6 +7,8 @@ use base qw( Path::Extended::Dir );
 sub _initialize {
   my ($self, @args) = @_;
 
+  return if @args && !defined $args[0];
+
   my $dir = @args ? File::Spec->catdir( @args ) : File::Spec->curdir;
 
   $self->{path}      = $self->_unixify( File::Spec->rel2abs($dir) );
@@ -20,6 +22,20 @@ sub _initialize {
 sub new_foreign {
   my ($class, $type, @args) = @_;
   $class->new(@args);
+}
+
+sub absolute {
+  my $self = shift;
+  $self->{_base} = undef;
+  $self;
+}
+
+sub relative {
+  my $self = shift;
+  my $base = @_ % 2 ? shift : undef;
+  my %options = @_;
+  $self->{_base} = $base || $options{base} || File::Spec->curdir;
+  $self;
 }
 
 sub cleanup    { shift } # is always clean
@@ -41,42 +57,16 @@ sub dir_list {
   return @parts[$offset .. $length + $offset - 1];
 }
 
-sub volume {
+sub tempfile {
   my $self = shift;
-
-  my ($vol) = File::Spec->splitpath( $self->path );
-  return $vol;
+  require File::Temp;
+  return File::Temp::tempfile(@_, DIR => $self->stringify);
 }
 
-sub subsumes {
-  my ($self, $other) = @_;
-
-  Carp::croak "No second entity given to subsumes()" unless $other;
-  my $class = $self->_class('dir');
-  $other = $class->new($other) unless UNIVERSAL::isa($other, $class);
-  $other = $other->dir unless $other->is_dir;
-
-  if ( $self->volume ) {
-    return 0 if $other->volume eq $self->volume;
-  }
-
-  my @my_parts    = $self->_parts(1);
-  my @other_parts = $other->_parts(1);
-
-  return 0 if @my_parts > @other_parts;
-
-  my $i = 0;
-  while ( $i < @my_parts ) {
-    return 0 unless $my_parts[$i] eq $other_parts[$i];
-    $i++;
-  }
-  return 1;
-}
-
-sub contains {
-  my ($self, $other) = @_;
-  return !!(-d $self and (-e $other or -l $other) and $self->subsumes($other));
-}
+sub mkdir {require File::Path; File::Path::mkpath(shift->path, @_)}
+sub rmdir {require File::Path; File::Path::rmtree(shift->path, @_)}
+*mkpath = \&mkdir;
+*rmtree = *remove = \&rmdir;
 
 1;
 
@@ -92,17 +82,25 @@ L<Path::Extended::Class::Dir> behaves pretty much like L<Path::Class::Dir> and c
 
 =head1 COMPATIBLE METHODS
 
-=head2 volume
+=head2 absolute, relative
 
-returns a volume of the path (if any).
+change how to stringify internally and return the file object (instead of the path itself).
+
+=head2 mkdir, mkpath
+
+create a directory with L<File::Path>, and return the result (instead of the directory object itself).
+
+=head2 rmtree, rmdir, remove
+
+remove a directory with L<File::Path>, and return the result (instead of the directory object itself).
 
 =head2 dir_list
 
 returns parts of the path. See L<Path::Class::Dir> for details.
 
-=head2 subsumes, contains
+=head2 tempfile
 
-returns if the path belongs to the object, or vice versa. See L<Path::Class::Dir> for details.
+returns a temporary file handle (and its corresponding file name in a list context). See L<Path::Class::Dir> and L<File::Temp> for details
 
 =head1 INCOMPATIBLE METHODS
 

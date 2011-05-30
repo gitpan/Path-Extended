@@ -30,7 +30,7 @@ sub open {
 
   my $fh;
   if ( $mode =~ /:/ ) {
-    open $fh, $mode, $self->absolute
+    open $fh, $mode, $self->_absolute
       or do { $self->log( error => $! ); return; };
   }
   else {
@@ -53,7 +53,7 @@ sub sysopen {
 
   $self->close if $self->is_open;
 
-  CORE::sysopen my $fh, $self->absolute, @_
+  CORE::sysopen my $fh, $self->_absolute, @_
     or do { $self->log( error => $! ); return; };
 
   $self->{handle} = $fh;
@@ -152,7 +152,8 @@ sub slurp {
     ? $args[0]
     : { @args };
 
-  $self->open('r');
+  my $iomode = $options->{iomode} || 'r';
+  $self->open($iomode);
   unless ( $self->is_open ) {
     $self->log( warn => "Can't read", $self->{path}, $! );
     return;
@@ -225,7 +226,7 @@ sub save {
   my $mode = $options->{mode} || $options->{append} ? '>>' : '>';
   $self->open($mode);
   unless ( $self->is_open ) {
-    $self->log( warn => "Can't save", $self->absolute, $! );
+    $self->log( warn => "Can't save", $self->_absolute, $! );
     return;
   }
 
@@ -288,7 +289,7 @@ sub mtime {
 
   if ( @_ ) {
     my $mtime = shift;
-    utime $mtime, $mtime, $self->absolute;
+    utime $mtime, $mtime, $self->_absolute;
   }
   else {
     return $self->stat->mtime;
