@@ -34,4 +34,4 @@ requires:
   Test::Classy: 0.04
   Test::More: 0.47
   Test::UseAllModules: 0.09
-version: 0.20
+version: 0.21
